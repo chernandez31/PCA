@@ -1,0 +1,57 @@
+import pandas as pd
+import json
+import os
+
+def convert_xlsx_to_jsonl(xlsx_path, jsonl_path):
+    try:
+        # Check if the XLSX file exists
+        if not os.path.exists(xlsx_path):
+            raise FileNotFoundError(f"The file {xlsx_path} does not exist.")
+        
+        # Read the XLSX file
+        try:
+            df = pd.read_excel(xlsx_path)
+            print("Successfully read the Excel file.")
+            print("First few rows of the DataFrame:")
+            print(df.head())  # Print the first few rows of the DataFrame for diagnostics
+            print("\nDataFrame Info:")
+            print(df.info())  # Print info about the DataFrame columns and data types
+            
+            # Verify column names. Add or change if you need to.
+            expected_columns = ['Transcript', 'Ticket_id']
+            if list(df.columns) != expected_columns:
+                raise ValueError(f"Unexpected columns: {df.columns}. Expected columns: {expected_columns}")
+            
+        except ValueError as ve:
+            raise ValueError(f"Failed to read the Excel file. The file might be malformed: {ve}")
+        except Exception as e:
+            raise ValueError(f"Failed to read the Excel file due to an unexpected error: {e}")
+        
+        # Transform DataFrame to match JSONL structure
+        jsonl_data = []
+        for index, row in df.iterrows():
+            record = {
+                "inputs": {"tasks": row["Transcript"]},  # Ensure the key matches the expected input format
+                "output": str(row["Ticket_id"])  # Ensure the output is a string if required
+            }
+            jsonl_data.append(record)
+        
+        # Write DataFrame to JSONL
+        try:
+            with open(jsonl_path, 'w', encoding='utf-8') as jsonl_file:  # Ensure UTF-8 encoding
+                for record in jsonl_data:
+                    jsonl_file.write(json.dumps(record, ensure_ascii=False) + '\n')  # Write each record as a single JSON object on a new line
+            print(f"File successfully converted to JSONL and saved to {jsonl_path}")
+        except Exception as e:
+            raise IOError(f"Failed to write JSONL file: {e}")
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# Define paths
+xlsx_path = '/Users/[USER NAME]/Downloads/Missing_LLM_Prompt_Data.xlsx'
+jsonl_file_name = 'Missing_LLM_Prompt_Data.jsonl'
+jsonl_path = os.path.join('/Users/[USER NAME]/Downloads/', jsonl_file_name)
+
+# Convert the XLSX file to JSONL
+convert_xlsx_to_jsonl(xlsx_path, jsonl_path)
