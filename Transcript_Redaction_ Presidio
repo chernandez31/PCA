@@ -1,0 +1,57 @@
+import pandas as pd
+import os
+from presidio_analyzer import AnalyzerEngine
+from presidio_anonymizer import AnonymizerEngine
+
+def anonymize_text(text, analyzer, anonymizer):
+    # Analyze the text to find PII entities
+    results = analyzer.analyze(text=text, language='en')
+    # Anonymize the detected entities
+    anonymized_result = anonymizer.anonymize(text=text, analyzer_results=results)
+    return anonymized_result.text
+
+def anonymize_pii_in_excel(xlsx_path, output_path):
+    try:
+        # Check XLSX
+        if not os.path.exists(xlsx_path):
+            raise FileNotFoundError(f"The file {xlsx_path} does not exist.")
+        
+        # Ready,set go - run the Presidio Analyzer and Anonymizer
+        analyzer = AnalyzerEngine()
+        anonymizer = AnonymizerEngine()
+        
+        # Read the XLSX file
+        try:
+            df = pd.read_excel(xlsx_path)
+            print("Successfully read the Excel file.")
+            print("First few rows of the DataFrame:")
+            print(df.head())  # Print the first few rows of the DataFrame for diagnostics
+            print("\nDataFrame Info:")
+            print(df.info())  # Print info about the DataFrame columns and data types
+            
+            # check the column names. Add additonal colnumn names if you have them in your document. 
+            expected_columns = ['TRANSCRIPT']
+            if list(df.columns) != expected_columns:
+                raise ValueError(f"Unexpected columns: {df.columns}. Expected columns: {expected_columns}")
+            
+        except ValueError as ve:
+            raise ValueError(f"Failed to read the Excel file. The file might be malformed: {ve}")
+        except Exception as e:
+            raise ValueError(f"Failed to read the Excel file due to an unexpected error: {e}")
+        
+        # Anonymize the 'Transcript' column
+        df['TRANSCRIPT'] = df['TRANSCRIPT'].apply(lambda x: anonymize_text(x, analyzer, anonymizer))
+        
+        # Save the new Excel file
+        df.to_excel(output_path, index=False)
+        print(f"File successfully anonymized and saved to {output_path}")
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+# File locations and new print file name
+xlsx_path = '/Users/[User Path]/Downloads/direct_deposit.xlsx'
+output_path = '/Users/[User Path]/Downloads/Anonymized_preview__direct_de.xlsx'
+
+# Anonymize PII in the Excel file
+anonymize_pii_in_excel(xlsx_path, output_path)
